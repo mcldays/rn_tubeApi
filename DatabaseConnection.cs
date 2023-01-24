@@ -12,7 +12,7 @@ namespace webapiTest
         BsonElement videos { get; set; }
         public DbContext()
         {
-            client = new MongoClient("mongodb://localhost:27017");
+            client = new MongoClient("mongodb://rn_tube_db:27017");
             db = client.GetDatabase("restube_test");
         }
 
