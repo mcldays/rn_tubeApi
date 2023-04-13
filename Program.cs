@@ -1,4 +1,5 @@
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using SharpCompress.Common;
 using webapiTest;
@@ -11,6 +12,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddAuthentication("Bearer");  // схема аутентификации - с помощью jwt-токенов
+builder.Services.AddAuthorization();
 
 builder.Services.Configure<FormOptions>(x =>
 {
@@ -18,6 +21,8 @@ builder.Services.Configure<FormOptions>(x =>
     x.MultipartBoundaryLengthLimit = int.MaxValue;
     x.MultipartBodyLengthLimit = 10L * 1024L * 1024L * 1024L;
 });
+
+
 
 builder.Services.AddCors(options =>
 {     
@@ -43,14 +48,14 @@ if (app.Environment.IsDevelopment())
 app.UseCors();
 app.UseDefaultFiles();
 app.UseStaticFiles();
-
-
+app.UseAuthentication();
+app.UseAuthorization();
 
 DbContext conn = new DbContext();
 
 conn.ConnectDatabase();
 
- app.MapGet("/video",(string path) =>
+ app.MapGet("/video",[Authorize](string path) =>
  {
      GC.Collect();
      //FileStream fileStream = new FileStream(path, FileMode.Open);
@@ -63,7 +68,7 @@ conn.ConnectDatabase();
     return System.IO.Directory.GetFiles(path).Length;
  });
 
-app.MapPost("/AddVideo", async (context) =>
+app.MapPost("/AddVideo", [Authorize]async (context) =>
 {
 
     try
