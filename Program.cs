@@ -40,11 +40,16 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseDeveloperExceptionPage();
+    
     
 }
-
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "API V1");
+                c.RoutePrefix = string.Empty;
+            });
 app.UseCors();
 app.UseDefaultFiles();
 app.UseStaticFiles();
@@ -76,11 +81,11 @@ app.MapPost("/AddVideo", [Authorize]async (context) =>
         context.Features.Get<IHttpMaxRequestBodySizeFeature>().MaxRequestBodySize = null;
         IFormFile fileData;
         IFormFile filePreview;
-        var dict = context.Request.Form.ToDictionary(x => x.Key, x => x.Value.ToString()); //Имя файла
+        var dict = context.Request.Form.ToDictionary(x => x.Key, x => x.Value.ToString()); //пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 
         if (context.Request.Form.Files.Count == 1)
         {
-            fileData = context.Request.Form.Files[0]; // Файл
+            fileData = context.Request.Form.Files[0]; // пїЅпїЅпїЅпїЅ
             
             var model = new VideoModel
             {
@@ -94,7 +99,7 @@ app.MapPost("/AddVideo", [Authorize]async (context) =>
         else
         {
             filePreview = context.Request.Form.Files[0];
-            fileData = context.Request.Form.Files[1]; // Файл
+            fileData = context.Request.Form.Files[1]; // пїЅпїЅпїЅпїЅ
             using (var ms = new MemoryStream())
             {
                 filePreview.CopyTo(ms);
