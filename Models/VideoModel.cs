@@ -1,10 +1,11 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
+using rn_tubeApi.Interfaces;
 
 namespace webapiTest.Models
 {
-    public class VideoModel
+    public class VideoModel : IInsertDb
     {
         public string Title { get; set; }
         public string Link { get; set; }

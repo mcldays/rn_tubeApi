@@ -1,7 +1,13 @@
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.IdentityModel.Tokens;
+using rn_tubeApi;
+using rn_tubeApi.Models;
 using SharpCompress.Common;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using webapiTest;
 using webapiTest.Models;
 
@@ -12,8 +18,21 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddAuthentication("Bearer");  // схема аутентификации - с помощью jwt-токенов
 builder.Services.AddAuthorization();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = AuthOptions.ISSUER,
+            ValidateAudience = true,
+            ValidAudience = AuthOptions.AUDIENCE,
+            ValidateLifetime = true,
+            IssuerSigningKey = AuthOptions.GetSymmetricSecurityKey(),
+            ValidateIssuerSigningKey = true,
+        };
+    });
 
 builder.Services.Configure<FormOptions>(x =>
 {
@@ -60,84 +79,48 @@ DbContext conn = new DbContext();
 
 conn.ConnectDatabase();
 
- app.MapGet("/video",[Authorize](string path) =>
+ app.MapGet("/video", (string path) =>
  {
      GC.Collect();
-     //FileStream fileStream = new FileStream(path, FileMode.Open);
      var filestream = System.IO.File.OpenRead(path);
-     
      return Results.File(filestream, contentType: "video/mp4",  enableRangeProcessing: true); 
  });
 
- app.MapGet("/getVideoCount", ()=>{
+ app.MapGet("/getVideoCount", [Authorize] ()=>{
     return System.IO.Directory.GetFiles(path).Length;
  });
 
-app.MapPost("/AddVideo", [Authorize]async (context) =>
+app.Map("/login", (UserModel user) =>
 {
+    var claims = new List<Claim> { new Claim(ClaimTypes.Name, user.Login) };
+    // создаем JWT-токен
+    var jwt = new JwtSecurityToken(
+            issuer: AuthOptions.ISSUER,
+            audience: AuthOptions.AUDIENCE,
+            claims: claims,
+            expires: DateTime.UtcNow.Add(TimeSpan.FromMinutes(2)),
+            signingCredentials: new SigningCredentials(AuthOptions.GetSymmetricSecurityKey(), SecurityAlgorithms.HmacSha256));
 
-    try
-    {
-        context.Features.Get<IHttpMaxRequestBodySizeFeature>().MaxRequestBodySize = null;
-        IFormFile fileData;
-        IFormFile filePreview;
-        var dict = context.Request.Form.ToDictionary(x => x.Key, x => x.Value.ToString()); //пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
-
-        if (context.Request.Form.Files.Count == 1)
-        {
-            fileData = context.Request.Form.Files[0]; // пїЅпїЅпїЅпїЅ
-            
-            var model = new VideoModel
-            {
-                Link = Path.Combine("./videos/", fileData.Name),
-                Previev = "",
-                Title = dict["name"]
-
-            };
-            conn.AddVideo(model);
-        }
-        else
-        {
-            filePreview = context.Request.Form.Files[0];
-            fileData = context.Request.Form.Files[1]; // пїЅпїЅпїЅпїЅ
-            using (var ms = new MemoryStream())
-            {
-                filePreview.CopyTo(ms);
-                var fileBytes = ms.ToArray();
-                string s = Convert.ToBase64String(fileBytes);
-
-                var model = new VideoModel
-                {
-                    Link = Path.Combine("./videos/", fileData.Name),
-                    Previev = s,
-                    Title = dict["name"]
-
-                };
-                conn.AddVideo(model);
-            }
-
-        }
-        string filePath = Path.Combine("./videos/", fileData.Name);
-        using (Stream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
-        {
-            await fileData.CopyToAsync(fileStream);
-        }
-        Console.WriteLine(fileData);
-    }
-    catch (Exception ex)
-    {
-
-        throw;
-    }
-
-    //var result = context.Request.Form.Keys;
-
+    return new JwtSecurityTokenHandler().WriteToken(jwt);
 });
 
-app.MapGet("/getAllVideos",async () =>
+app.Map("/reg", (UserModel user) =>
+{
+   return conn.Registration(user);
+});
+
+
+app.MapPost("/AddVideo", conn.AddVideo).RequireAuthorization();
+
+app.MapGet("/getAllVideos", [Authorize] async () =>
 {
     var videos = await conn.GetAllVideos();
     return videos;
+});
+
+app.Map("/aut", (LoginModel model) =>
+{
+    return conn.Authorize(model);
 });
 
 app.Run();
