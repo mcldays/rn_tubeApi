@@ -9,6 +9,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using webapiTest.Models;
+using System;
 
 namespace webapiTest
 {
@@ -18,8 +19,12 @@ namespace webapiTest
         IMongoDatabase db { get; set; }
         public DbContext()
         {
-            //client = new MongoClient("mongodb://rn_tube_db:27017");     // for docker
-            client = new MongoClient("mongodb://localhost:27017");    // for localhost
+            if (Environment.GetEnvironmentVariable("RN_TUBE_MODE") == "PRODUCTION") {
+                client = new MongoClient("mongodb://rn_tube_db:27017");     // for docker
+            }
+            else {
+                client = new MongoClient("mongodb://localhost:27017");    // for localhost
+            }
             db = client.GetDatabase("restube_test");
         }
 
